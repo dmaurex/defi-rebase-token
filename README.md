@@ -64,3 +64,12 @@ $ forge --help
 $ anvil --help
 $ cast --help
 ```
+
+
+
+forge install OpenZeppelin/openzeppelin-contracts@v5.4.0
+
+
+- Known flaw: `RebaseToken.totalSupply` does not account for increase in supply due to interest. Could cause DoS when updating for that because one would need to loop through all users and sum their minted tokens including the interest
+- Info: `RebaseToken.transfer` and `RebaseToken.transferFrom` needs to be implemented to prevent other users sending small amounts to another user to purposely drive down the other users interest rate
+- Feature/Peculiarity: `RebaseToken.transfer` due to inheriting interest rate from sender when previously having no tokens. When wallet with low interest rate transfers to empty wallet first, and then another wallet with high interest transfers, the first wallet's interest rate is inherited. A high interest wallet should be the first to transfer to inherit the high interests... One can abuse this known feature/bug by early on minting a tiny amount in wallet A. Later on one can deposit a huge amount in wallet B. Then one can get the initially high interest rate from wallet A by transferring amount from wallet A to a fresh wallet C and then from wallet B to C -> Mitigation use the global interest rate (at the time of transfer)
