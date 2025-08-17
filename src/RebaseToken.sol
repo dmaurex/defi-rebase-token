@@ -23,6 +23,10 @@ contract RebaseToken is ERC20 {
 
     constructor() ERC20("Rebase Token", "RBT") {}
 
+    /////////////////////
+    // External functions
+    /////////////////////
+
     /**
      * @notice Sets the global interest rate for the rebase token
      * @param _newInterestRate The new interest rate to set
@@ -37,6 +41,16 @@ contract RebaseToken is ERC20 {
     }
 
     /**
+     * @notice Get the principal balance of a user. 
+     * @notice It is the number of tokens a user has without any interest that has accrued since the last interaction with the protocol. 
+     * @param _user The user to get the principal balance for
+     * @return The principal balance of the user
+     */
+    function principleBalanceOf(address _user) external view returns (uint256) {
+        return super.balanceOf(_user);
+    }
+
+    /**
      * @notice Mint the user tokens when they deposit into the vault
      * @param _to The user to mint the tokens to
      * @param _amount The amount of tokens to mint
@@ -46,6 +60,23 @@ contract RebaseToken is ERC20 {
         s_userInterestRate[_to] = s_interestRate;
         _mint(_to, _amount);
     }
+
+    /**
+     * @notice Burn the user tokens when they withdraw from the vault
+     * @param _from The user to burn the tokens from
+     * @param _amount The amount of tokens to burn
+     */
+    function burn(address _from, uint256 _amount) external {
+        if (_amount == type(uint256).max) { // standard practice to account for dust
+            _amount = balanceOf(_from);
+        }
+        _mintAccruedInterest(_from); // update on interaction
+        _burn(_from, _amount);
+    }
+
+    ///////////////////
+    // Public functions
+    ///////////////////
 
     /**
      * @notice Calculate the balance for the user including the interest that has accumulated since the last update
@@ -58,6 +89,57 @@ contract RebaseToken is ERC20 {
         // that has accumulated in the time since the balance was last updated
         return (super.balanceOf(_user) * _calculateUserAccumulatedInterestSinceLastUpdate(_user)) / PRECISION;
     }
+
+    /**
+     * @notice Transfer tokens from sender to to another user
+     * @param _to The user to transfer tokens to
+     * @param _amount The amount of tokens to transfer
+     * @return True if the transfer was successful
+     * @dev Recipient receives the sender's interest rate if he owned no tokens previously
+     */
+    function transfer(address _to, uint256 _amount) public override returns (bool) {
+        // Update both's balance since transfer counts as protocol interaction
+        _mintAccruedInterest(msg.sender);
+        _mintAccruedInterest(_to);
+
+        if(_amount == type(uint256).max) { // standard practice to account for dust 
+            _amount = balanceOf(msg.sender);
+        }
+        if (balanceOf(_to) == 0) {
+            // Inherit interest rate from the sender when recipient had no tokens previously
+            // TODO: alternatively use the global interest rate
+            s_userInterestRate[_to] = s_userInterestRate[msg.sender];
+        }
+        return super.transfer(_to, _amount);
+    }
+
+    /**
+     * @notice Transfer tokens from one user to another
+     * @param _from The user to transfer the tokens from
+     * @param _to  The user to transfer the tokens to
+     * @param _amount The amount of tokens to transfer
+     * @return True if the transfer was successful
+     * @dev Recipient receives the sender's interest rate if he owned no tokens previously
+     */
+    function transferFrom(address _from, address _to, uint256 _amount) public override returns (bool) {
+        // Update both's balance since transfer counts as protocol interaction
+        _mintAccruedInterest(_from);
+        _mintAccruedInterest(_to);
+
+        if(_amount == type(uint256).max) { // standard practice to account for dust 
+            _amount = balanceOf(_from);
+        }
+        if (balanceOf(_to) == 0) {
+            // Inherit interest rate from the sender when recipient had no tokens previously
+            // TODO: alternatively use the global interest rate
+            s_userInterestRate[_to] = s_userInterestRate[_from];
+        }
+        return super.transferFrom(_from, _to, _amount);
+    }
+
+    /////////////////////////////////
+    // Internal and private functions
+    /////////////////////////////////
 
     /**
      * @notice Calculate the interest that has accumulated since the last update
@@ -82,5 +164,27 @@ contract RebaseToken is ERC20 {
         // Set the users last updated timestamp
         s_userLastUpdatedTimestamp[_user] = block.timestamp;
         _mint(_user, balanceIncrease);
+    }
+
+    //////////////////////////
+    // External view functions
+    //////////////////////////
+
+    /**
+     * @notice Get the interest rate currently set for the contract.
+     * @notice Any future depositors will receive this interest rate.
+     * @return The interest rate for the contract
+     */
+    function getInterestRate() external view returns (uint256) {
+        return s_interestRate;
+    }
+
+    /**
+     * @notice Returns the personal interest rate for a user
+     * @param _user The address of the user
+     * @return The interest rate for the user
+     */
+    function getUserInterestRate(address _user) external view returns (uint256) {
+        return s_userInterestRate[_user];
     }
 }
