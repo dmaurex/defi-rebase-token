@@ -52,8 +52,8 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
     }
 
     /**
-     * @notice Get the principal balance of a user. 
-     * @notice It is the number of tokens a user has without any interest that has accrued since the last interaction with the protocol. 
+     * @notice Get the principal balance of a user.
+     * @notice It is the number of tokens a user has without any interest that has accrued since the last interaction with the protocol.
      * @param _user The user to get the principal balance for
      * @return The principal balance of the user
      */
@@ -78,7 +78,8 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
      * @param _amount The amount of tokens to burn
      */
     function burn(address _from, uint256 _amount) external onlyRole(MINT_AND_BURN_ROLE) {
-        if (_amount == type(uint256).max) { // standard practice to account for dust
+        if (_amount == type(uint256).max) {
+            // standard practice to account for dust
             _amount = balanceOf(_from);
         }
         _mintAccruedInterest(_from); // update on interaction
@@ -113,7 +114,8 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
         _mintAccruedInterest(msg.sender);
         _mintAccruedInterest(_to);
 
-        if(_amount == type(uint256).max) { // standard practice to account for dust 
+        if (_amount == type(uint256).max) {
+            // standard practice to account for dust
             _amount = balanceOf(msg.sender);
         }
         if (balanceOf(_to) == 0) {
@@ -137,7 +139,8 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
         _mintAccruedInterest(_from);
         _mintAccruedInterest(_to);
 
-        if(_amount == type(uint256).max) { // standard practice to account for dust 
+        if (_amount == type(uint256).max) {
+            // standard practice to account for dust
             _amount = balanceOf(_from);
         }
         if (balanceOf(_to) == 0) {
