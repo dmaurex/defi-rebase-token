@@ -44,7 +44,7 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
      * @dev The interest rate can only decrease
      */
     function setInterestRate(uint256 _newInterestRate) external onlyOwner {
-        if (_newInterestRate < s_interestRate) {
+        if (_newInterestRate >= s_interestRate) {
             revert RebaseToken__InterestRateCanOnlyDecrease(s_interestRate, _newInterestRate);
         }
         s_interestRate = _newInterestRate;
@@ -57,7 +57,7 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
      * @param _user The user to get the principal balance for
      * @return The principal balance of the user
      */
-    function principleBalanceOf(address _user) external view returns (uint256) {
+    function principalBalanceOf(address _user) external view returns (uint256) {
         return super.balanceOf(_user);
     }
 
