@@ -129,6 +129,21 @@ contract RebaseTokenTest is Test {
         uint256 userTwoBalanceAfterTransfer = rebaseToken.balanceOf(userTwo);
         assertEq(userBalanceAfterTransfer, userBalance - amountToSend);
         assertEq(userTwoBalanceAfterTransfer, userTwoBalance + amountToSend);
+
+        // 4. After some time has passed, check the balance of the two users has increased
+        vm.warp(block.timestamp + 1 days);
+        uint256 userBalanceAfterWarp = rebaseToken.balanceOf(user);
+        uint256 userTwoBalanceAfterWarp = rebaseToken.balanceOf(userTwo);
+        // Check their interest rates are as expected:
+        // a) since userTwo has not minted before, its interest rate should be the same as in the contract
+        uint256 userTwoInterestRate = rebaseToken.getUserInterestRate(userTwo);
+        assertEq(userTwoInterestRate, 5e10);
+        // b) since user has minted before, its interest rate should be the previous interest rate
+        uint256 userInterestRate = rebaseToken.getUserInterestRate(user);
+        assertEq(userInterestRate, 5e10);
+
+        assertGt(userBalanceAfterWarp, userBalanceAfterTransfer);
+        assertGt(userTwoBalanceAfterWarp, userTwoBalanceAfterTransfer);
     }
 
     function testUserCannotSetInterestRate(uint256 newInterestRate) public {
@@ -182,5 +197,38 @@ contract RebaseTokenTest is Test {
         );
         rebaseToken.setInterestRate(newInterestRate);
         assertEq(rebaseToken.getInterestRate(), initialInterestRate);
+    }
+
+    function testCannotWithdrawMoreThanBalance() public {
+        // Deposit funds
+        vm.startPrank(user);
+        vm.deal(user, SEND_VALUE);
+        vault.deposit{value: SEND_VALUE}();
+        vm.expectRevert();
+        vault.redeem(SEND_VALUE + 1);
+        vm.stopPrank();
+    }
+
+    function testDepositWorks(uint256 amount) public {
+        amount = bound(amount, 1e3, type(uint96).max);
+        vm.deal(user, amount);
+        vm.prank(user);
+        vault.deposit{value: amount}();
+    }
+
+    function testSetInterestRateWorks(uint256 newInterestRate) public {
+        newInterestRate = bound(newInterestRate, 0, rebaseToken.getInterestRate() - 1);
+        // Update the interest rate
+        vm.prank(owner);
+        rebaseToken.setInterestRate(newInterestRate);
+        uint256 interestRate = rebaseToken.getInterestRate();
+        assertEq(interestRate, newInterestRate);
+
+        // Check that new interest rate is used if someone deposits
+        vm.deal(user, SEND_VALUE);
+        vm.prank(user);
+        vault.deposit{value: SEND_VALUE}();
+        uint256 userInterestRate = rebaseToken.getUserInterestRate(user);
+        assertEq(userInterestRate, newInterestRate);
     }
 }
