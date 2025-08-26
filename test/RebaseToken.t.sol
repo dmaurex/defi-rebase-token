@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
 
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
-import {RebaseToken} from "../src/RebaseToken.sol";
-import {Vault} from "../src/Vault.sol";
-import {IRebaseToken} from "../src/interfaces/IRebaseToken.sol";
+import {RebaseToken} from "src/RebaseToken.sol";
+import {Vault} from "src/Vault.sol";
+import {IRebaseToken} from "src/interfaces/IRebaseToken.sol";
 
 contract RebaseTokenTest is Test {
     RebaseToken public rebaseToken;
@@ -155,10 +155,11 @@ contract RebaseTokenTest is Test {
     }
 
     function testCannotCallMint() public {
+        uint256 interestRate = rebaseToken.getInterestRate();
         vm.prank(user);
         // Only match selector of custom error (difficult to test arguments in testing env)
         vm.expectPartialRevert(IAccessControl.AccessControlUnauthorizedAccount.selector);
-        rebaseToken.mint(user, SEND_VALUE);
+        rebaseToken.mint(user, SEND_VALUE, interestRate);
     }
 
     function testCannotCallBurn() public {
