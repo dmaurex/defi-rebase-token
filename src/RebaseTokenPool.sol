@@ -12,7 +12,7 @@ contract RebaseTokenPool is TokenPool {
         TokenPool(_token, _allowlist, _rmnProxy, _router)
     {}
 
-    /// @notice burns the tokens on the source chain
+    /// @notice Burns the tokens on the source chain
     function lockOrBurn(Pool.LockOrBurnInV1 calldata lockOrBurnIn)
         external
         virtual
