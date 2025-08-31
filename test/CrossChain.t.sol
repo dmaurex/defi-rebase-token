@@ -212,4 +212,103 @@ contract CrossChainTest is Test {
             arbSepoliaToken
         );
     }
+
+    function testBridgeAllTokensBack() public {
+        // We are working on the source chain (Sepolia)
+        vm.selectFork(sepoliaFork);
+        // Pretend a user is interacting with the protocol
+        // Give the user some ETH
+        vm.deal(user, SEND_VALUE);
+        vm.startPrank(user);
+        // Deposit to the vault and receive tokens
+        Vault(payable(address(vault))).deposit{value: SEND_VALUE}(); // vault needs to be payable
+        console.log("Bridging %d tokens", SEND_VALUE);
+        assertEq(sepoliaToken.balanceOf(user), SEND_VALUE);
+        vm.stopPrank();
+        // Bridge all tokens to the destination chain (Arbitrum Sepolia)
+        bridgeTokens(
+            SEND_VALUE,
+            sepoliaFork,
+            arbSepoliaFork,
+            sepoliaNetworkDetails,
+            arbSepoliaNetworkDetails,
+            sepoliaToken,
+            arbSepoliaToken
+        );
+
+        // Bridge back all tokens to the source chain after 1 hour
+        vm.selectFork(arbSepoliaFork);
+        console.log("User Balance Before Warp: ", arbSepoliaToken.balanceOf(user));
+        vm.warp(block.timestamp + 1 hours);
+        console.log("User Balance After Warp: ", arbSepoliaToken.balanceOf(user));
+        uint256 destBalance = arbSepoliaToken.balanceOf(user);
+        console.log("Bridging back %d tokens ", destBalance);
+        bridgeTokens(
+            destBalance,
+            arbSepoliaFork,
+            sepoliaFork,
+            arbSepoliaNetworkDetails,
+            sepoliaNetworkDetails,
+            arbSepoliaToken,
+            sepoliaToken
+        );
+    }
+
+    function testBridgeTwice() public {
+        // We are working on the source chain (Sepolia)
+        vm.selectFork(sepoliaFork);
+        // Pretend a user is interacting with the protocol
+        // Give the user some ETH
+        vm.deal(user, SEND_VALUE);
+        vm.startPrank(user);
+        // Deposit to the vault and receive tokens
+        Vault(payable(address(vault))).deposit{value: SEND_VALUE}(); // vault needs to be payable
+        console.log("Bridging %d tokens (first bridging event)", SEND_VALUE / 2);
+        assertEq(sepoliaToken.balanceOf(user), SEND_VALUE);
+        vm.stopPrank();
+        // Bridge half tokens to the destination chain (Arbitrum Sepolia)
+        bridgeTokens(
+            SEND_VALUE / 2,
+            sepoliaFork,
+            arbSepoliaFork,
+            sepoliaNetworkDetails,
+            arbSepoliaNetworkDetails,
+            sepoliaToken,
+            arbSepoliaToken
+        );
+
+        // Wait 1 hour for the interest to accrue
+        vm.selectFork(sepoliaFork);
+        vm.warp(block.timestamp + 1 hours);
+        uint256 newSourceBalance = sepoliaToken.balanceOf(user);
+        // Bridge the tokens
+        console.log("Bridging %d tokens (second bridging event)", newSourceBalance);
+        bridgeTokens(
+            newSourceBalance,
+            sepoliaFork,
+            arbSepoliaFork,
+            sepoliaNetworkDetails,
+            arbSepoliaNetworkDetails,
+            sepoliaToken,
+            arbSepoliaToken
+        );
+
+        // Bridge back all tokens to the source chain after 1 hour
+        vm.selectFork(arbSepoliaFork);
+        // Wait an hour for the tokens to accrue interest on the destination chain
+        console.log("User Balance Before Warp: ", arbSepoliaToken.balanceOf(user));
+        vm.warp(block.timestamp + 1 hours);
+        console.log("User Balance After Warp: ", arbSepoliaToken.balanceOf(user));
+        uint256 destBalance = arbSepoliaToken.balanceOf(user);
+        console.log("Amount bridging back %d tokens ", destBalance);
+        bridgeTokens(
+            destBalance,
+            arbSepoliaFork,
+            sepoliaFork,
+            arbSepoliaNetworkDetails,
+            sepoliaNetworkDetails,
+            arbSepoliaToken,
+            sepoliaToken
+        );
+    }
 }
