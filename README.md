@@ -75,37 +75,33 @@ $ make testFork  # only fork tests on Ethereum and Arbitrum Sepolia testnets
 ## 🌐 Deployment
 
 ### **Single Chain Functionality** 🏝️
-For basic rebase token functionality testing on Ethereum Sepolia:
+For basic rebase token functionality on Ethereum Sepolia:
 
 ```shell
 $ make deployEth
-$ make confPoolEth \
-  ETH_SEPOLIA_POOL_ADDRESS=0x... \
-  ARB_SEPOLIA_POOL_ADDRESS=0x... \
-  ARB_SEPOLIA_REBASE_TOKEN_ADDRESS=0x...
 ```
 
 This deploys:
 - **RebaseToken** - The rebase token contract
-- **RebaseTokenPool** - CCIP pool for cross-chain bridging
+- **RebaseTokenPool** - CCIP pool for cross-chain bridging (not needed for single chain functionality)
 - **Vault** - Contract for ETH deposits and RBT minting
-- **Pool Configuration** - Links the pool to Arbitrum Sepolia
 
 ### **Cross-Chain Functionality** 🌉
 To enable cross-chain token bridging, deploy the rebase token and pool on Arbitrum Sepolia:
 
 ```shell
 $ make deployArb
-$ make confPoolArb \
-  ARB_SEPOLIA_POOL_ADDRESS=0x... \
-  ETH_SEPOLIA_POOL_ADDRESS=0x... \
+$ make confPools \
   ETH_SEPOLIA_REBASE_TOKEN_ADDRESS=0x...
+  ARB_SEPOLIA_REBASE_TOKEN_ADDRESS=0x...
+  ETH_SEPOLIA_POOL_ADDRESS=0x... \
+  ARB_SEPOLIA_POOL_ADDRESS=0x... \
 ```
 
 This deploys:
 - **RebaseToken** - Same token contract on Arbitrum Sepolia
 - **RebaseTokenPool** - CCIP pool for cross-chain bridging
-- **Pool Configuration** - Links the pool to Ethereum Sepolia
+- **Pool Configuration** - Links the pools from source chain (Ethereum Sepolia) and destination chain (Arbitrum Sepolia)
 
 **Note**: The Vault is only needed on one chain (Ethereum Sepolia) since users deposit ETH there to mint RBT tokens.
 
