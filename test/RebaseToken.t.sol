@@ -8,6 +8,7 @@ import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol"
 import {RebaseToken} from "src/RebaseToken.sol";
 import {Vault} from "src/Vault.sol";
 import {IRebaseToken} from "src/interfaces/IRebaseToken.sol";
+import {FailingReceiverMock} from "test/mocks/FailingReceiverMock.sol";
 
 contract RebaseTokenTest is Test {
     RebaseToken public rebaseToken;
@@ -231,5 +232,167 @@ contract RebaseTokenTest is Test {
         vault.deposit{value: SEND_VALUE}();
         uint256 userInterestRate = rebaseToken.getUserInterestRate(user);
         assertEq(userInterestRate, newInterestRate);
+    }
+
+    function testTransferWithMaxAmount() public {
+        // 1. Deposit funds
+        vm.deal(user, SEND_VALUE);
+        vm.prank(user);
+        vault.deposit{value: SEND_VALUE}();
+
+        address userTwo = makeAddr("userTwo");
+
+        // 2. Transfer with max amount (type(uint256).max)
+        vm.prank(user);
+        rebaseToken.transfer(userTwo, type(uint256).max);
+
+        // 3. Check that all tokens were transferred
+        assertEq(rebaseToken.balanceOf(user), 0);
+        assertEq(rebaseToken.balanceOf(userTwo), SEND_VALUE);
+    }
+
+    function testTransferFromWithMaxAmount() public {
+        // 1. Deposit funds
+        vm.deal(user, SEND_VALUE);
+        vm.prank(user);
+        vault.deposit{value: SEND_VALUE}();
+
+        address userTwo = makeAddr("userTwo");
+        address userThree = makeAddr("userThree");
+
+        // 2. Approve userTwo to spend user's tokens
+        vm.prank(user);
+        rebaseToken.approve(userTwo, SEND_VALUE);
+
+        // 3. TransferFrom with max amount (type(uint256).max)
+        vm.prank(userTwo);
+        rebaseToken.transferFrom(user, userThree, type(uint256).max);
+
+        // 4. Check that all tokens were transferred
+        assertEq(rebaseToken.balanceOf(user), 0);
+        assertEq(rebaseToken.balanceOf(userThree), SEND_VALUE);
+    }
+
+    function testBurnWithMaxAmountWorks() public {
+        // 1. Deposit funds
+        vm.deal(user, SEND_VALUE);
+        vm.prank(user);
+        vault.deposit{value: SEND_VALUE}();
+
+        uint256 initialBalance = rebaseToken.balanceOf(user);
+        assertGt(initialBalance, 0);
+
+        // 2. Burn with max amount (type(uint256).max)
+        vm.prank(address(vault));
+        rebaseToken.burn(user, type(uint256).max);
+
+        // 3. Check that all tokens were burned
+        assertEq(rebaseToken.balanceOf(user), 0);
+    }
+
+    function testUserLastUpdatedTimestampAccess() public {
+        // 1. Deposit funds
+        vm.deal(user, SEND_VALUE);
+        vm.prank(user);
+        vault.deposit{value: SEND_VALUE}();
+
+        // 2. Get initial balance
+        uint256 initialBalance = rebaseToken.balanceOf(user);
+
+        // 3. Warp time to accrue interest
+        vm.warp(block.timestamp + 1 days);
+
+        // 4. Get balance again (this should access s_userLastUpdatedTimestamp)
+        uint256 balanceAfterTime = rebaseToken.balanceOf(user);
+
+        // 5. Balance should have increased due to interest accrual
+        assertGt(balanceAfterTime, initialBalance);
+    }
+
+    function testVaultRedeemFails() public {
+        // This test covers the Vault__RedeemFailed() error
+        // We need to mock a scenario where the ETH transfer fails
+
+        // 1. Deposit funds
+        vm.deal(user, SEND_VALUE);
+        vm.prank(user);
+        vault.deposit{value: SEND_VALUE}();
+
+        // 2. Create a mock contract that will fail on receive
+        FailingReceiverMock receiverMock = new FailingReceiverMock();
+
+        // 3. Transfer tokens to the mock receiver
+        vm.prank(user);
+        rebaseToken.transfer(address(receiverMock), SEND_VALUE);
+
+        // 4. Try to redeem from the mock receiver (this should fail)
+        vm.prank(address(receiverMock));
+        vm.expectRevert(Vault.Vault__RedeemFailed.selector);
+        vault.redeem(SEND_VALUE);
+    }
+
+    function testTransferToZeroAddress() public {
+        // Test transfer to zero address
+        vm.deal(user, SEND_VALUE);
+        vm.prank(user);
+        vault.deposit{value: SEND_VALUE}();
+
+        vm.prank(user);
+        vm.expectRevert(); // ERC20 transfer to zero address should revert
+        rebaseToken.transfer(address(0), SEND_VALUE);
+    }
+
+    function testTransferFromToZeroAddress() public {
+        // Test transferFrom to zero address
+        vm.deal(user, SEND_VALUE);
+        vm.prank(user);
+        vault.deposit{value: SEND_VALUE}();
+
+        address userTwo = makeAddr("userTwo");
+        vm.prank(user);
+        rebaseToken.approve(userTwo, SEND_VALUE);
+
+        vm.prank(userTwo);
+        vm.expectRevert(); // ERC20 transferFrom to zero address should revert
+        rebaseToken.transferFrom(user, address(0), SEND_VALUE);
+    }
+
+    function testTransferWithZeroAmount() public {
+        // Test transfer with zero amount
+        vm.deal(user, SEND_VALUE);
+        vm.prank(user);
+        vault.deposit{value: SEND_VALUE}();
+
+        address userTwo = makeAddr("userTwo");
+        uint256 initialBalance = rebaseToken.balanceOf(user);
+
+        vm.prank(user);
+        bool success = rebaseToken.transfer(userTwo, 0);
+        assertTrue(success);
+
+        // Balance should remain the same
+        assertEq(rebaseToken.balanceOf(user), initialBalance);
+        assertEq(rebaseToken.balanceOf(userTwo), 0);
+    }
+
+    function testTransferFromWithZeroAmount() public {
+        // Test transferFrom with zero amount
+        vm.deal(user, SEND_VALUE);
+        vm.prank(user);
+        vault.deposit{value: SEND_VALUE}();
+
+        address userTwo = makeAddr("userTwo");
+        vm.prank(user);
+        rebaseToken.approve(userTwo, SEND_VALUE);
+
+        uint256 initialBalance = rebaseToken.balanceOf(user);
+
+        vm.prank(userTwo);
+        bool success = rebaseToken.transferFrom(user, userTwo, 0);
+        assertTrue(success);
+
+        // Balance should remain the same
+        assertEq(rebaseToken.balanceOf(user), initialBalance);
+        assertEq(rebaseToken.balanceOf(userTwo), 0);
     }
 }
