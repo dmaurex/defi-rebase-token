@@ -9,14 +9,14 @@ This project is part of a code-along from the [Foundry Fundamentals](https://upd
 
 ## ✨ Features
 
-- **Rebase Token**: RBT automatically accrues interest over time
-- **Cross-Chain Support**: Seamless token bridging between different blockchain networks
-- **Individual Interest Rates**: Each user maintains their own interest rate
-- **Decreasing Interest Rate Policy**: Global interest rate can only decrease
-- **Vault Integration**: Users deposit ETH to receive rebase tokens
-- **Role-Based Access Control**: Only authorized contracts can mint and burn tokens
-- **Developer Workflow**: Lightning-fast testing, scripting, and deployment
-- **Fuzzing**: Includes Foundry's fuzzing tests for security
+- **Rebase Token**: RBT automatically accrues interest over time.
+- **Cross-Chain Support**: Seamless token bridging between different blockchain networks.
+- **Individual Interest Rates**: Each user maintains their own interest rate.
+- **Decreasing Interest Rate Policy**: Global interest rate can only decrease.
+- **Vault Integration**: Users deposit ETH to receive rebase tokens.
+- **Role-Based Access Control**: Only authorized contracts can mint and burn tokens.
+- **Developer Workflow**: Lightning-fast testing, scripting, and deployment.
+- **Fuzzing**: Includes Foundry's fuzzing tests for security.
 
 ---
 
@@ -156,6 +156,7 @@ The repository follows the usual Foundry folder structure:
 │   ├── RebaseTokenPool.sol — "CCIP pool for cross-chain token bridging"
 │   └── Vault.sol — "Vault contract for ETH deposits and RBT minting"
 ├── test/
+│   ├── mocks/ — "Mocks for testing"
 │   ├── RebaseToken.t.sol — "Unit tests for rebase token functionality"
 │   └── CrossChain.t.sol — "Cross-chain fork tests"
 ```
