@@ -67,7 +67,7 @@ Run test suites:
 ```shell
 $ make test  # run ALL tests
 $ make testLocal  # only unit and fuzz tests
-$ make testFork  # only fork tests on Ethereum and Arbitrum Sepolia testnets
+$ make testFork  # only fork tests on Ethereum and Arbitrum Sepolia testnets (requires RPC URLs)
 ```
 
 ---

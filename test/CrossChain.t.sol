@@ -23,6 +23,7 @@ contract CrossChainTest is Test {
     uint256 public constant SEND_VALUE = 1e10;
     uint256 sepoliaFork;
     uint256 arbSepoliaFork;
+    bool skipForkTest;
 
     CCIPLocalSimulatorFork ccipLocalSimulatorFork;
     RebaseToken sepoliaToken;
@@ -34,7 +35,38 @@ contract CrossChainTest is Test {
     Register.NetworkDetails sepoliaNetworkDetails;
     Register.NetworkDetails arbSepoliaNetworkDetails;
 
+    function checkRpcUrls() public {
+        skipForkTest = false;
+        try vm.envString("ETH_SEPOLIA_RPC_URL") returns (string memory) {
+            try vm.envString("ARB_SEPOLIA_RPC_URL") returns (string memory) {
+                // Both RPC URLs are set, we can proceed with fork tests
+                console.log("RPC URLs configured - fork tests will run");
+            } catch {
+                console.log("WARNING: Skipping fork tests because ARB_SEPOLIA_RPC_URL is not set");
+                console.log("Set ETH_SEPOLIA_RPC_URL and ARB_SEPOLIA_RPC_URL environment variables to run fork tests");
+                skipForkTest = true;
+            }
+        } catch {
+            console.log("WARNING: Skipping fork tests because ETH_SEPOLIA_RPC_URL is not set");
+            console.log("Set ETH_SEPOLIA_RPC_URL and ARB_SEPOLIA_RPC_URL environment variables to run fork tests");
+            skipForkTest = true;
+        }
+    }
+
+    modifier onlyForks() {
+        if (skipForkTest) {
+            return;
+        }
+        _;
+    }
+
     function setUp() public {
+        checkRpcUrls();
+
+        if (skipForkTest) {
+            return; // Skip setup if RPC URLs are not configured
+        }
+
         sepoliaFork = vm.createSelectFork("eth-sepolia");
         arbSepoliaFork = vm.createFork("arb-sepolia");
 
@@ -132,7 +164,7 @@ contract CrossChainTest is Test {
         Register.NetworkDetails memory remoteNetworkDetails,
         RebaseToken localToken,
         RebaseToken remoteToken
-    ) public {
+    ) public onlyForks {
         vm.selectFork(localFork);
         vm.startPrank(user);
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
@@ -189,7 +221,7 @@ contract CrossChainTest is Test {
         // assertEq(localUserInterestRate, remoteUserInterestRate);
     }
 
-    function testBridgeAllTokens() public {
+    function testBridgeAllTokens() public onlyForks {
         // We are working on the source chain (Sepolia)
         vm.selectFork(sepoliaFork);
         // Pretend a user is interacting with the protocol
@@ -213,7 +245,7 @@ contract CrossChainTest is Test {
         );
     }
 
-    function testBridgeAllTokensBack() public {
+    function testBridgeAllTokensBack() public onlyForks {
         // We are working on the source chain (Sepolia)
         vm.selectFork(sepoliaFork);
         // Pretend a user is interacting with the protocol
@@ -254,7 +286,7 @@ contract CrossChainTest is Test {
         );
     }
 
-    function testBridgeTwice() public {
+    function testBridgeTwice() public onlyForks {
         // We are working on the source chain (Sepolia)
         vm.selectFork(sepoliaFork);
         // Pretend a user is interacting with the protocol
